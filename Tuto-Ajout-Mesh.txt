@@ -1,0 +1,80 @@
+RéessayerSSi je veux creer un autre  motif personnalisé au centre du cercle, que faut il faire, quel fichier modifier ?ModifierPour créer un autre motif personnalisé au centre du cercle, vous devez modifier 2 fichiers :
+1. Fichier src/geometry.rs - Ajouter la nouvelle fonction
+Ajoutez une nouvelle fonction similaire à get_custom_pattern_points :
+rust/// Retourne les coordonnées du second motif personnalisé
+pub fn get_custom_pattern_2_points(_inner_radius: f32) -> Vec<Vec2> {
+    vec![
+        // ICI : Remplacez par vos nouvelles coordonnées
+        Vec2::new(10.0, 20.0),
+        Vec2::new(30.0, 40.0),
+        Vec2::new(50.0, 30.0),
+        // ... vos autres points
+    ]
+}
+2. Fichier src/systems/setup.rs - Ajouter la création
+A. Modifier la fonction setup_system
+Ajoutez l'appel à la nouvelle fonction :
+rustpub fn setup_system(/* ... */) {
+    commands.spawn(Camera2d::default());
+    
+    create_main_circle(&mut commands, &mut meshes, &mut materials);
+    create_exterior_triangles(&mut commands, &mut meshes, &mut materials);
+    create_interior_triangles(&mut commands, &mut meshes, &mut materials);
+    create_custom_pattern(&mut commands, &mut meshes, &mut materials);
+    create_custom_pattern_2(&mut commands, &mut meshes, &mut materials); // ← NOUVEAU
+    
+    print_creation_summary();
+}
+B. Créer la nouvelle fonction
+Ajoutez cette fonction à la fin du fichier :
+rust/// Crée le second motif personnalisé au centre du cercle
+fn create_custom_pattern_2(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    let inner_radius = config::CIRCLE_RADIUS - config::CIRCLE_THICKNESS;
+    let pattern_points = geometry::get_custom_pattern_2_points(inner_radius);
+    
+    if pattern_points.len() < 3 {
+        println!("⚠️ Erreur : Le motif personnalisé 2 nécessite au moins 3 points");
+        return;
+    }
+    
+    let pattern_mesh = geometry::create_polygon_from_points(&pattern_points);
+    let pattern_handle = meshes.add(pattern_mesh);
+    
+    // DIFFÉRENTE COULEUR (par exemple bleu semi-transparent)
+    let pattern_material = materials.add(ColorMaterial::from(
+        Color::srgba(0.2, 0.6, 1.0, 0.6)  // Bleu semi-transparent
+    ));
+    
+    commands.spawn((
+        Mesh2d(pattern_handle),
+        MeshMaterial2d(pattern_material),
+        Transform::from_xyz(0.0, 0.0, 0.5), // Z=0.5 pour être au-dessus du premier motif
+    ));
+    
+    println!("✨ Second motif personnalisé créé avec {} points", pattern_points.len());
+}
+C. Mettre à jour le résumé (optionnel)
+Dans print_creation_summary(), ajoutez :
+rustprintln!("   • 2 motifs personnalisés au centre");
+📋 Résumé des modifications :
+
+src/geometry.rs : Nouvelle fonction get_custom_pattern_2_points()
+src/systems/setup.rs :
+
+Appel dans setup_system()
+Nouvelle fonction create_custom_pattern_2()
+Mise à jour du résumé
+
+
+
+💡 Points importants :
+
+Profondeur Z : Utilisez Z=0.5 pour le mettre au-dessus du premier (Z=0.4)
+Couleur différente : Pour distinguer les deux motifs
+Coordonnées : Remplacez l'exemple par vos vraies coordonnées
+
+Voulez-vous que je vous montre le code complet avec vos nouvelles coordonnées ?RéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.SY aurait il une façon plus simple d'ajouter des formes au code sources
