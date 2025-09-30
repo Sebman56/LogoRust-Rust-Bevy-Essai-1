@@ -1,0 +1,1189 @@
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                          FICHIER: Cargo.toml                             ║
+// ║  Fichier de configuration du projet Rust                                 ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+[package]
+name = "logo-rust-bevy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.16.1"
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                          FICHIER: src/main.rs                            ║
+// ║  Point d'entrée de l'application                                         ║
+// ║  Rôle : Lancer l'application Bevy configurée dans lib.rs                ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+// Importe la fonction run() depuis le module library
+use logo_rust_bevy::run;
+
+/// Point d'entrée principal de l'application
+/// 
+/// Cette fonction est appelée automatiquement au lancement du programme.
+/// Elle délègue toute la logique à la fonction run() définie dans lib.rs
+/// pour maintenir une séparation claire entre le point d'entrée et la logique.
+fn main() {
+    // Lancement de l'application Bevy
+    run();
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                          FICHIER: src/lib.rs                             ║
+// ║  Module racine de la bibliothèque                                        ║
+// ║  Rôle : Déclarer tous les modules et configurer l'application Bevy      ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+use bevy::prelude::*;
+
+// === DÉCLARATION DES MODULES ===
+// Chaque module est défini dans un fichier séparé pour une meilleure organisation
+
+/// Module de configuration - Contient toutes les constantes du projet
+pub mod config;
+
+/// Module des matériaux - Gère les couleurs et apparences visuelles
+pub mod materials;
+
+/// Module de géométrie - Fonctions de création de formes et calculs mathématiques
+pub mod geometry;
+
+/// Module des systèmes - Contient la logique de setup et autres systèmes Bevy
+pub mod systems;
+
+// Import du système de setup pour l'utiliser dans la configuration
+use systems::setup::setup_system;
+
+/// Fonction principale qui configure et lance l'application Bevy
+/// 
+/// Cette fonction crée une nouvelle application Bevy avec :
+/// - Les plugins par défaut (fenêtre, rendu, input, etc.)
+/// - Le système de setup qui s'exécute au démarrage
+/// 
+/// L'application tourne en boucle jusqu'à ce que l'utilisateur ferme la fenêtre.
+pub fn run() {
+    App::new()
+        // === PLUGINS BEVY ===
+        // DefaultPlugins inclut tous les systèmes essentiels :
+        // - WindowPlugin : gestion de la fenêtre
+        // - RenderPlugin : moteur de rendu
+        // - InputPlugin : clavier, souris, gamepad
+        // - AssetPlugin : chargement des assets
+        // - et bien d'autres...
+        .add_plugins(DefaultPlugins)
+        
+        // === SYSTÈMES DE DÉMARRAGE ===
+        // Startup : systèmes exécutés une seule fois au lancement
+        // Notre système setup_system crée tous les éléments visuels
+        .add_systems(Startup, setup_system)
+        
+        // === LANCEMENT ===
+        // Démarre la boucle de jeu (game loop)
+        // Cette fonction bloque jusqu'à la fermeture de l'application
+        .run();
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                        FICHIER: src/config.rs                            ║
+// ║  Configuration globale de l'application                                  ║
+// ║  Rôle : Centraliser toutes les constantes pour faciliter les ajustements║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+//! Module de configuration
+//! 
+//! Ce module centralise toutes les valeurs configurables du projet.
+//! Avantages :
+//! - Modification facile des paramètres sans toucher au code métier
+//! - Vue d'ensemble des dimensions et quantités
+//! - Évite les "magic numbers" dispersés dans le code
+
+// === CONFIGURATION DU CERCLE PRINCIPAL ===
+
+/// Rayon du cercle principal en pixels
+/// 
+/// Détermine la taille globale du logo. Toutes les autres
+/// dimensions sont calculées relativement à ce rayon.
+/// Valeur recommandée : 150-300 pour un affichage confortable
+pub const CIRCLE_RADIUS: f32 = 200.0;
+
+/// Épaisseur de l'anneau du cercle principal en pixels
+/// 
+/// Définit l'épaisseur de la bande colorée du cercle.
+/// Plus la valeur est élevée, plus l'anneau est épais.
+/// Recommandation : 10-15% du rayon (20-40 px pour rayon 200)
+pub const CIRCLE_THICKNESS: f32 = 30.0;
+
+/// Nombre de segments pour le rendu des cercles
+/// 
+/// Plus le nombre est élevé, plus le cercle est lisse mais
+/// plus le calcul est coûteux. Valeurs recommandées :
+/// - 32 : performance (cercle légèrement anguleux)
+/// - 64 : équilibré (recommandé)
+/// - 128 : qualité maximale (pour zoom ou export)
+pub const CIRCLE_SEGMENTS: usize = 64;
+
+// === CONFIGURATION DES TRIANGLES EXTÉRIEURS ===
+
+/// Nombre de triangles extérieurs disposés autour du cercle
+/// 
+/// Ces triangles forment un anneau arc-en-ciel autour du cercle.
+/// Valeur actuelle : 36 triangles espacés de 10° (360°/36)
+/// Modification : doit être un diviseur de 360 pour un espacement régulier
+/// Exemples : 12 (30°), 24 (15°), 36 (10°), 72 (5°)
+pub const EXTERIOR_TRIANGLES_COUNT: usize = 36;
+
+/// Taille d'un côté des triangles extérieurs en pixels
+/// 
+/// Définit la dimension des petits triangles arc-en-ciel.
+/// Recommandation : 10-15% du rayon pour un rendu harmonieux
+pub const SMALL_TRIANGLE_SIDE: f32 = 25.0;
+
+// === CONFIGURATION DES TRIANGLES INTÉRIEURS ===
+
+/// Nombre de triangles intérieurs formant un pentagone
+/// 
+/// Valeur fixe : 5 triangles pour créer une étoile à 5 branches
+/// Modification déconseillée sauf pour créer d'autres formes :
+/// - 3 : triangle
+/// - 4 : carré
+/// - 6 : hexagone
+pub const INTERIOR_TRIANGLES_COUNT: usize = 5;
+
+/// Taille d'un côté des triangles intérieurs en pixels
+/// 
+/// Ces triangles sont plus grands que les extérieurs.
+/// Recommandation : 35-45% du rayon pour remplir l'espace intérieur
+pub const LARGE_TRIANGLE_SIDE: f32 = 80.0;
+
+// === CONFIGURATION DES PETITS CERCLES ===
+
+/// Rayon des petits cercles au centre de chaque triangle intérieur
+/// 
+/// Ces cercles marquent le centroïde de chaque grand triangle.
+/// Recommandation : 5-10% du rayon principal
+pub const SMALL_CIRCLE_RADIUS: f32 = 15.0;
+
+/// Qualité de rendu des petits cercles
+/// 
+/// Peut être inférieur à CIRCLE_SEGMENTS car ces cercles sont plus petits.
+/// Valeurs recommandées : 24-48
+pub const SMALL_CIRCLE_SEGMENTS: usize = 32;
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                      FICHIER: src/materials.rs                           ║
+// ║  Gestion des couleurs et matériaux                                       ║
+// ║  Rôle : Définir l'apparence visuelle de tous les éléments               ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+//! Module de gestion des matériaux et couleurs
+//! 
+//! Ce module centralise toutes les définitions de couleurs pour :
+//! - Cohérence visuelle du projet
+//! - Modification facile des palettes de couleurs
+//! - Réutilisation des couleurs
+
+use bevy::prelude::*;
+
+/// Retourne le matériau pour le cercle principal (anneau épais)
+/// 
+/// Couleur actuelle : Rouge-orangé (#CC3319 approximatif)
+/// Format SRGB : (Rouge: 0.8, Vert: 0.2, Bleu: 0.1)
+/// 
+/// Pour changer la couleur :
+/// - Rouge vif : (1.0, 0.0, 0.0)
+/// - Bleu : (0.2, 0.4, 0.8)
+/// - Vert : (0.2, 0.8, 0.3)
+pub fn get_main_circle_color() -> ColorMaterial {
+    ColorMaterial::from(Color::srgb(0.8, 0.2, 0.1))
+}
+
+/// Génère une couleur arc-en-ciel basée sur l'index du triangle
+/// 
+/// Principe : utilise le système HSL (Teinte, Saturation, Luminosité)
+/// - Teinte (H) : varie de 0° à 360° pour parcourir toutes les couleurs
+/// - Saturation (S) : 0.8 (80%) pour des couleurs vives mais pas criardes
+/// - Luminosité (L) : 0.6 (60%) pour éviter les couleurs trop claires ou trop sombres
+/// 
+/// # Arguments
+/// * `index` - Position du triangle (0 à EXTERIOR_TRIANGLES_COUNT-1)
+/// 
+/// # Exemples de couleurs générées
+/// - Index 0 (0°) : Rouge
+/// - Index 9 (90°) : Jaune-vert
+/// - Index 18 (180°) : Cyan
+/// - Index 27 (270°) : Violet
+pub fn get_rainbow_color(index: usize) -> ColorMaterial {
+    // Calcul de l'angle de teinte : chaque triangle décale de 10°
+    let hue_fraction = (index as f32 * 10.0) / 360.0;
+    
+    // Conversion en angle complet (0-360°)
+    let hue_degrees = hue_fraction * 360.0;
+    
+    // Création de la couleur HSL
+    let color = Color::hsl(
+        hue_degrees,  // Teinte : 0-360°
+        0.8,          // Saturation : 80% (couleurs vives)
+        0.6           // Luminosité : 60% (ni trop clair ni trop foncé)
+    );
+    
+    ColorMaterial::from(color)
+}
+
+/// Retourne la couleur d'un triangle intérieur selon son index
+/// 
+/// Palette de 5 couleurs distinctes qui se répètent si nécessaire.
+/// Chaque couleur est choisie pour être bien distincte des autres.
+/// 
+/// # Palette actuelle
+/// 0. Bleu azur : pour le calme et la confiance
+/// 1. Orange : pour l'énergie et la créativité
+/// 2. Vert émeraude : pour la nature et l'harmonie
+/// 3. Rose fuchsia : pour l'originalité
+/// 4. Violet : pour la sophistication
+/// 
+/// # Arguments
+/// * `index` - Position du triangle (0 à INTERIOR_TRIANGLES_COUNT-1)
+pub fn get_interior_triangle_color(index: usize) -> ColorMaterial {
+    // Définition de la palette de couleurs
+    let colors = [
+        Color::srgb(0.2, 0.6, 0.9), // Bleu azur
+        Color::srgb(0.9, 0.6, 0.2), // Orange
+        Color::srgb(0.2, 0.9, 0.6), // Vert émeraude
+        Color::srgb(0.9, 0.2, 0.6), // Rose fuchsia
+        Color::srgb(0.6, 0.2, 0.9), // Violet
+    ];
+    
+    // Utilisation du modulo pour gérer les index supérieurs à 5
+    // Exemple : index 7 → 7 % 5 = 2 → couleur verte
+    ColorMaterial::from(colors[index % colors.len()])
+}
+
+/// Retourne le matériau pour les petits cercles centraux
+/// 
+/// Couleur : Blanc semi-transparent (opacité 70%)
+/// L'alpha (transparence) permet de voir les triangles en dessous
+/// tout en marquant visuellement le centre.
+/// 
+/// Format SRGBA : (Rouge: 1.0, Vert: 1.0, Bleu: 1.0, Alpha: 0.7)
+/// Pour ajuster la transparence, modifier la dernière valeur :
+/// - 0.5 : plus transparent
+/// - 0.9 : presque opaque
+pub fn get_small_circle_color() -> ColorMaterial {
+    ColorMaterial::from(Color::srgba(1.0, 1.0, 1.0, 0.7))
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                      FICHIER: src/geometry.rs                            ║
+// ║  Fonctions de géométrie et création de mesh                              ║
+// ║  Rôle : Générer les formes géométriques et calculer leurs positions     ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+//! Module de géométrie
+//! 
+//! Ce module contient toutes les fonctions mathématiques et de génération
+//! de formes géométriques. Il est divisé en plusieurs sections :
+//! 
+//! 1. Fonctions utilitaires (conversion d'angles)
+//! 2. Création de mesh basiques (cercles, triangles)
+//! 3. Calculs de positions pour les triangles extérieurs/intérieurs
+//! 4. Définition du logo "R" personnalisé
+
+use bevy::prelude::*;
+use std::f32::consts::PI;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//                        SECTION 1 : FONCTIONS UTILITAIRES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Convertit un angle en degrés vers des radians
+/// 
+/// Les fonctions trigonométriques de Rust (sin, cos, tan) utilisent
+/// les radians. Cette fonction permet d'utiliser des degrés (plus intuitifs).
+/// 
+/// # Formule
+/// radians = degrés × π / 180
+/// 
+/// # Exemples
+/// - 0° → 0 rad
+/// - 90° → π/2 rad (≈1.57)
+/// - 180° → π rad (≈3.14)
+/// - 360° → 2π rad (≈6.28)
+pub fn degrees_to_radians(degrees: f32) -> f32 {
+    degrees * PI / 180.0
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//                      SECTION 2 : CRÉATION DE MESH BASIQUES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Crée un mesh d'anneau (cercle avec un trou au centre)
+/// 
+/// Un anneau est créé en générant deux cercles concentriques
+/// (extérieur et intérieur) puis en les reliant avec des triangles.
+/// 
+/// # Algorithme
+/// 1. Générer les vertices du cercle extérieur
+/// 2. Générer les vertices du cercle intérieur
+/// 3. Créer des quadrilatères entre les deux cercles
+/// 4. Diviser chaque quadrilatère en 2 triangles
+/// 
+/// # Arguments
+/// * `outer_radius` - Rayon du cercle extérieur
+/// * `inner_radius` - Rayon du cercle intérieur
+/// * `segments` - Nombre de segments (qualité du cercle)
+/// 
+/// # Détails techniques
+/// Pour N segments, on génère :
+/// - 2N vertices (N extérieurs + N intérieurs)
+/// - 2N triangles (2 triangles par segment)
+/// - 6N indices (3 indices par triangle)
+pub fn create_circle_mesh(outer_radius: f32, inner_radius: f32, segments: usize) -> Mesh {
+    let mut positions = Vec::new();
+    let mut indices = Vec::new();
+
+    // === GÉNÉRATION DES VERTICES DU CERCLE EXTÉRIEUR ===
+    // On parcourt l'angle de 0 à 2π pour faire le tour complet
+    for i in 0..segments {
+        // Angle du segment actuel
+        let angle = 2.0 * PI * i as f32 / segments as f32;
+        
+        // Position du vertex sur le cercle extérieur
+        // x = rayon × cos(angle), y = rayon × sin(angle)
+        positions.push([
+            outer_radius * angle.cos(),
+            outer_radius * angle.sin(),
+            0.0,  // Z=0 car on travaille en 2D
+        ]);
+    }
+
+    // === GÉNÉRATION DES VERTICES DU CERCLE INTÉRIEUR ===
+    // Même principe mais avec le rayon intérieur
+    for i in 0..segments {
+        let angle = 2.0 * PI * i as f32 / segments as f32;
+        positions.push([
+            inner_radius * angle.cos(),
+            inner_radius * angle.sin(),
+            0.0,
+        ]);
+    }
+
+    // === CRÉATION DES TRIANGLES ===
+    // Pour chaque segment, on crée un quadrilatère puis on le divise en 2 triangles
+    for i in 0..segments {
+        // Index du prochain segment (avec retour au début)
+        let next = (i + 1) % segments;
+        
+        // Triangle 1 : coin inférieur gauche du quadrilatère
+        // Vertices : extérieur_i, intérieur_i, extérieur_next
+        indices.push(i as u32);
+        indices.push((segments + i) as u32);
+        indices.push(next as u32);
+        
+        // Triangle 2 : coin supérieur droit du quadrilatère
+        // Vertices : extérieur_next, intérieur_i, intérieur_next
+        indices.push(next as u32);
+        indices.push((segments + i) as u32);
+        indices.push((segments + next) as u32);
+    }
+
+    // === CRÉATION DU MESH BEVY ===
+    Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_indices(bevy::render::mesh::Indices::U32(indices))
+}
+
+/// Crée un mesh de cercle plein
+/// 
+/// Génère un cercle solide (disque) en créant des triangles
+/// depuis le centre vers chaque point du contour.
+/// 
+/// # Algorithme
+/// 1. Placer un vertex au centre (0, 0)
+/// 2. Générer N vertices sur le contour
+/// 3. Créer N triangles reliant le centre à chaque paire de vertices adjacents
+/// 
+/// # Arguments
+/// * `radius` - Rayon du cercle
+/// * `segments` - Nombre de segments du contour
+pub fn create_filled_circle_mesh(radius: f32, segments: usize) -> Mesh {
+    let mut positions = Vec::new();
+    let mut indices = Vec::new();
+
+    // === VERTEX CENTRAL ===
+    // Premier vertex au centre du cercle
+    positions.push([0.0, 0.0, 0.0]);
+
+    // === VERTICES DU CONTOUR ===
+    // Génération des points sur le périmètre
+    for i in 0..segments {
+        let angle = 2.0 * PI * i as f32 / segments as f32;
+        positions.push([
+            radius * angle.cos(),
+            radius * angle.sin(),
+            0.0,
+        ]);
+    }
+
+    // === TRIANGLES EN ÉVENTAIL ===
+    // Chaque triangle relie le centre à deux vertices adjacents du contour
+    for i in 0..segments {
+        // Calcul de l'index suivant (retour au début pour le dernier)
+        let next = if i == segments - 1 { 1 } else { i + 2 };
+        
+        // Triangle : centre, vertex_i, vertex_suivant
+        indices.push(0);              // Centre (index 0)
+        indices.push((i + 1) as u32); // Vertex actuel
+        indices.push(next as u32);    // Vertex suivant
+    }
+
+    Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_indices(bevy::render::mesh::Indices::U32(indices))
+}
+
+/// Crée un triangle à partir de trois points 2D
+/// 
+/// Fonction simple qui convertit 3 points Vec2 en un mesh triangulaire.
+/// 
+/// # Arguments
+/// * `p1`, `p2`, `p3` - Les trois sommets du triangle
+/// 
+/// # Note
+/// L'ordre des points définit l'orientation du triangle (sens horaire/antihoraire)
+/// ce qui affecte la face visible (culling).
+pub fn create_triangle_from_points(p1: Vec2, p2: Vec2, p3: Vec2) -> Mesh {
+    // Conversion des points 2D en positions 3D (Z=0)
+    let positions = vec![
+        [p1.x, p1.y, 0.0],
+        [p2.x, p2.y, 0.0],
+        [p3.x, p3.y, 0.0],
+    ];
+
+    // Indices des 3 sommets dans l'ordre
+    let indices = vec![0u32, 1, 2];
+
+    Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_indices(bevy::render::mesh::Indices::U32(indices))
+}
+
+/// Crée un polygone complexe à partir d'une liste de points
+/// 
+/// Utilise une triangulation en éventail (fan triangulation) :
+/// - Tous les triangles partagent le premier vertex
+/// - Chaque triangle relie le premier vertex à deux vertices consécutifs
+/// 
+/// # Limitations
+/// Cette méthode fonctionne bien pour les polygones convexes.
+/// Pour les polygones concaves complexes, une triangulation plus
+/// sophistiquée (comme l'algorithme ear-clipping) serait nécessaire.
+/// 
+/// # Arguments
+/// * `points` - Slice de Vec2 représentant les sommets du polygone
+/// 
+/// # Panic
+/// Panic si moins de 3 points sont fournis
+pub fn create_polygon_from_points(points: &[Vec2]) -> Mesh {
+    if points.len() < 3 {
+        panic!("Un polygone doit avoir au moins 3 points");
+    }
+    
+    // === CONVERSION DES POINTS EN POSITIONS 3D ===
+    let positions: Vec<[f32; 3]> = points
+        .iter()
+        .map(|p| [p.x, p.y, 0.0])
+        .collect();
+    
+    // === TRIANGULATION EN ÉVENTAIL ===
+    // Pour N points : créer N-2 triangles
+    // Triangle i relie les vertices 0, i, i+1
+    let mut indices = Vec::new();
+    for i in 1..(points.len() - 1) {
+        indices.push(0u32);           // Premier vertex (pivot)
+        indices.push(i as u32);       // Vertex actuel
+        indices.push((i + 1) as u32); // Vertex suivant
+    }
+    
+    Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_indices(bevy::render::mesh::Indices::U32(indices))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//            SECTION 3 : CALCULS DE POSITIONS DES TRIANGLES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Calcule les coordonnées d'un triangle extérieur
+/// 
+/// Les triangles extérieurs sont positionnés de manière à ce qu'un
+/// de leurs côtés (la base) touche le cercle principal.
+/// 
+/// # Stratégie de positionnement
+/// 1. Calculer deux points sur le cercle (extrémités de la base)
+/// 2. Calculer le troisième point à l'extérieur du cercle
+/// 
+/// # Arguments
+/// * `base_angle` - Angle central du triangle en radians
+/// * `circle_radius` - Rayon du cercle de référence
+/// * `triangle_side` - Longueur d'un côté du triangle équilatéral
+/// 
+/// # Géométrie
+/// Pour un triangle équilatéral de côté L :
+/// - Hauteur : h = L × √3 / 2
+/// - Les deux points de base sont espacés angulairement de L/R radians
+///   où R est le rayon du cercle
+pub fn calculate_exterior_triangle_points(
+    base_angle: f32,
+    circle_radius: f32,
+    triangle_side: f32,
+) -> (Vec2, Vec2, Vec2) {
+    let half_side = triangle_side / 2.0;
+    let height = triangle_side * (3.0_f32.sqrt() / 2.0);
+    
+    // === CALCUL DES DEUX POINTS DE BASE SUR LE CERCLE ===
+    // L'écart angulaire est approximé par half_side / circle_radius
+    let angle1 = base_angle - (half_side / circle_radius);
+    let angle2 = base_angle + (half_side / circle_radius);
+    
+    // Point 1 : sur le cercle, à gauche du centre
+    let p1 = Vec2::new(
+        circle_radius * angle1.cos(),
+        circle_radius * angle1.sin(),
+    );
+    
+    // Point 2 : sur le cercle, à droite du centre
+    let p2 = Vec2::new(
+        circle_radius * angle2.cos(),
+        circle_radius * angle2.sin(),
+    );
+    
+    // === CALCUL DU SOMMET EXTÉRIEUR ===
+    // Positionné à une distance de (rayon + hauteur) du centre
+    let p3 = Vec2::new(
+        (circle_radius + height) * base_angle.cos(),
+        (circle_radius + height) * base_angle.sin(),
+    );
+    
+    (p1, p2, p3)
+}
+
+/// Calcule les coordonnées d'un triangle intérieur
+/// 
+/// Similaire à calculate_exterior_triangle_points mais :
+/// - La base touche le cercle intérieur
+/// - Le sommet pointe vers le centre (intérieur)
+/// 
+/// # Arguments
+/// * `base_angle` - Angle central du triangle en radians
+/// * `inner_radius` - Rayon du cercle intérieur
+/// * `triangle_side` - Longueur d'un côté du triangle
+pub fn calculate_interior_triangle_points(
+    base_angle: f32,
+    inner_radius: f32,
+    triangle_side: f32,
+) -> (Vec2, Vec2, Vec2) {
+    let half_side = triangle_side / 2.0;
+    let height = triangle_side * (3.0_f32.sqrt() / 2.0);
+    
+    // === POINTS DE BASE SUR LE CERCLE INTÉRIEUR ===
+    let angle1 = base_angle - (half_side / inner_radius);
+    let angle2 = base_angle + (half_side / inner_radius);
+    
+    let p1 = Vec2::new(
+        inner_radius * angle1.cos(),
+        inner_radius * angle1.sin(),
+    );
+    let p2 = Vec2::new(
+        inner_radius * angle2.cos(),
+        inner_radius * angle2.sin(),
+    );
+    
+    // === SOMMET VERS L'INTÉRIEUR ===
+    // Distance : rayon - hauteur (pour pointer vers le centre)
+    let p3 = Vec2::new(
+        (inner_radius - height) * base_angle.cos(),
+        (inner_radius - height) * base_angle.sin(),
+    );
+    
+    (p1, p2, p3)
+}
+
+/// Calcule le centroïde (centre de gravité) d'un triangle
+/// 
+/// Le centroïde est le point d'intersection des médianes du triangle.
+/// Pour un triangle, c'est simplement la moyenne des coordonnées
+/// de ses trois sommets.
+/// 
+/// # Formule
+/// Centroïde = ((x1+x2+x3)/3, (y1+y2+y3)/3)
+/// 
+/// # Arguments
+/// * `p1`, `p2`, `p3` - Les trois sommets du triangle
+/// 
+/// # Propriété
+/// Le centroïde est équidistant des trois côtés du triangle
+pub fn calculate_triangle_centroid(p1: Vec2, p2: Vec2, p3: Vec2) -> Vec2 {
+    Vec2::new(
+        (p1.x + p2.x + p3.x) / 3.0,
+        (p1.y + p2.y + p3.y) / 3.0,
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//                    SECTION 4 : DÉFINITION DU LOGO "R"
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Structure représentant une partie du logo "R"
+/// 
+/// Chaque partie du logo est définie par :
+/// - Un nom descriptif pour l'identification
+/// - Une liste de points formant le polygone
+/// - Un ordre de profondeur Z pour le rendu en couches
+#[derive(Clone)]
+pub struct RPartDefinition {
+    /// Nom descriptif de la partie (pour debug et logs)
+    pub name: &'static str,
+    
+    /// Liste ordonnée des sommets du polygone
+    /// Les points doivent former un contour dans l'ordre
+    pub points: Vec<Vec2>,
+    
+    /// Ordre de rendu sur l'axe Z (plus élevé = devant)
+    /// Recommandation : utiliser des valeurs entre 0.40 et 0.50
+    /// pour être devant les triangles intérieurs (Z=0.3)
+    pub z_order: f32,
+}
+
+/// Retourne toutes les parties composant le logo "R"
+/// 
+/// Le logo "R" est décomposé en 8 parties géométriques distinctes :
+/// 1. Haut : barre horizontale supérieure
+/// 2. Gauche : barre verticale principale
+/// 3. Arrondi : courbe de la partie droite supérieure
+/// 4. Centre : petite barre de séparation
+/// 5. Pied gauche : base élargie à gauche
+/// 6. Milieu : zone de connexion centrale
+/// 7. Jambe droite : diagonale partant vers la droite
+/// 8. Pied droit : base élargie à droite
+/// 
+/// # Organisation
+/// Chaque partie a un z_order incrémental (0.40 à 0.47) pour
+/// s'assurer qu'elles se superposent correctement sans conflit visuel.
+/// 
+/// # Coordonnées
+/// Les coordonnées sont définies dans un système où :
+/// - (0, 0) est au centre de l'écran
+/// - X positif va vers la droite
+/// - Y positif va vers le haut
+/// 
+/// # Modification
+/// Pour ajuster le logo :
+/// 1. Modifier les Vec2::new(x, y) de chaque partie
+/// 2. Pour ajouter une partie : ajouter un nouveau RPartDefinition
+/// 3. Pour supprimer une partie : commenter ou retirer le bloc
+pub fn get_all_r_parts() -> Vec<RPartDefinition> {
+    vec![
+        // === PARTIE 1 : BARRE HORIZONTALE SUPÉRIEURE ===
+        RPartDefinition {
+            name: "Haut du R",
+            z_order: 0.40,
+            points: vec![
+                Vec2::new(-140.0, 90.0),  // Coin supérieur gauche
+                Vec2::new(60.0, 90.0),    // Coin supérieur droit
+                Vec2::new(60.0, 50.0),    // Coin inférieur droit
+                Vec2::new(-100.0, 50.0),  // Coin inférieur gauche
+            ],
+        },
+        
+        // === PARTIE 2 : BARRE VERTICALE PRINCIPALE GAUCHE ===
+        RPartDefinition {
+            name: "Gauche du R",
+            z_order: 0.41,
+            points: vec![
+                Vec2::new(-80.0, 50.0),   // Haut de la barre
+                Vec2::new(-30.0, 50.0),   // Haut droit
+                Vec2::new(-30.0, -50.0),  // Bas droit
+                Vec2::new(-80.0, -50.0),  // Bas gauche
+            ],
+        },
+        
+        // === PARTIE 3 : COURBE ARRONDIE DROITE ===
+        // Points formant l'arrondi caractéristique du "R"
+        RPartDefinition {
+            name: "Arrondi du R",
+            z_order: 0.42,
+            points: vec![
+                Vec2::new(60.0, 90.0),    // Départ en haut
+                Vec2::new(85.0, 60.0),    // Premier point de courbe
+                Vec2::new(100.0, 30.0),   // Point le plus à droite
+                Vec2::new(85.0, 0.0),     // Descente de la courbe
+                Vec2::new(60.0, -30.0),   // Fin de l'arrondi
+            ],
+        },
+        
+        // === PARTIE 4 : SÉPARATEUR CENTRAL ===
+        // Petite barre horizontale au milieu
+        RPartDefinition {
+            name: "Centre du R",
+            z_order: 0.43,
+            points: vec![
+                Vec2::new(60.0, 50.0),    // Haut gauche
+                Vec2::new(40.0, 50.0),    // Haut droit
+                Vec2::new(60.0, 10.0),    // Bas gauche
+                Vec2::new(40.0, 10.0),    // Bas droit
+            ],
+        },
+        
+        // === PARTIE 5 : PIED GAUCHE ÉLARGI ===
+        RPartDefinition {
+            name: "Pied gauche du R",
+            z_order: 0.44,
+            points: vec![
+                Vec2::new(-80.0, -50.0),   // Connexion avec barre verticale
+                Vec2::new(-10.0, -50.0),   // Vers le centre
+                Vec2::new(-10.0, -80.0),   // Descente
+                Vec2::new(-140.0, -80.0),  // Largeur maximale du pied
+                Vec2::new(-160.0, -50.0),  // Retour vers le haut
+                Vec2::new(-80.0, -50.0),   // Fermeture
+            ],
+        },
+        
+        // === PARTIE 6 : ZONE DE CONNEXION CENTRALE ===
+        RPartDefinition {
+            name: "Milieu du R",
+            z_order: 0.45,
+            points: vec![
+                Vec2::new(60.0, -30.0),   // Connexion avec arrondi
+                Vec2::new(60.0, 10.0),    // Montée
+                Vec2::new(-30.0, 10.0),   // Vers la gauche
+                Vec2::new(-30.0, -30.0),  // Redescente
+            ],
+        },
+        
+        // === PARTIE 7 : JAMBE DIAGONALE DROITE ===
+        RPartDefinition {
+            name: "Jambe droite du R",
+            z_order: 0.46,
+            points: vec![
+                Vec2::new(60.0, -30.0),   // Départ sous l'arrondi
+                Vec2::new(20.0, -30.0),   // Vers l'intérieur
+                Vec2::new(60.0, -50.0),   // Diagonale vers le bas-droit
+                Vec2::new(100.0, -50.0),  // Extension droite
+            ],
+        },
+        
+        // === PARTIE 8 : PIED DROIT ÉLARGI ===
+        RPartDefinition {
+            name: "Pied droit du R",
+            z_order: 0.47,
+            points: vec![
+                Vec2::new(160.0, -50.0),  // Extrémité droite
+                Vec2::new(30.0, -50.0),   // Vers le centre
+                Vec2::new(30.0, -80.0),   // Descente
+                Vec2::new(120.0, -80.0),  // Largeur du pied
+            ],
+        },
+    ]
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                    FICHIER: src/systems/mod.rs                           ║
+// ║  Déclaration des sous-modules du dossier systems                         ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+//! Module systems
+//! 
+//! Contient tous les systèmes Bevy de l'application.
+//! Actuellement : un seul système de setup pour l'initialisation.
+
+/// Module de configuration initiale
+/// Contient le système qui crée tous les éléments visuels au démarrage
+pub mod setup;
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║                   FICHIER: src/systems/setup.rs                          ║
+// ║  Système d'initialisation de la scène                                    ║
+// ║  Rôle : Créer tous les éléments visuels au démarrage                    ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+//! Module setup
+//! 
+//! Ce module contient toute la logique d'initialisation de l'application.
+//! Il est responsable de la création de :
+//! - La caméra 2D
+//! - Le cercle principal (anneau)
+//! - Les triangles extérieurs (arc-en-ciel)
+//! - Les triangles intérieurs (pentagone)
+//! - Les petits cercles centraux
+//! - Le logo "R" personnalisé
+//! 
+//! Organisation du rendu par profondeur Z :
+//! - Z = 0.0  : Cercle principal (arrière-plan)
+//! - Z = 0.1  : Triangles extérieurs
+//! - Z = 0.2  : Triangles intérieurs
+//! - Z = 0.3  : Petits cercles
+//! - Z = 0.4+ : Logo "R" (8 parties de 0.40 à 0.47)
+
+use bevy::prelude::*;
+use crate::{config, materials, geometry};
+
+/// Système principal d'initialisation
+/// 
+/// Ce système est exécuté une seule fois au démarrage (Startup schedule).
+/// Il reçoit trois ressources mutables de Bevy :
+/// 
+/// # Arguments
+/// * `commands` - File de commandes pour créer/supprimer des entités
+/// * `meshes` - Collection Asset des meshes 3D/2D
+/// * `materials` - Collection Asset des matériaux (couleurs, textures)
+/// 
+/// # Ordre d'exécution
+/// 1. Création de la caméra (sans elle, rien n'est visible)
+/// 2. Création des éléments de fond vers l'avant (ordre Z croissant)
+/// 3. Affichage du résumé dans la console
+/// 
+/// # Note technique
+/// Les systèmes Bevy sont des fonctions qui reçoivent des paramètres
+/// spéciaux (Commands, Query, Res, ResMut, etc.) injectés automatiquement
+/// par l'ECS (Entity Component System) de Bevy.
+pub fn setup_system(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    // === CAMÉRA 2D ===
+    // Obligatoire : sans caméra, aucun élément n'est rendu
+    // Camera2d::default() crée une caméra orthographique 2D centrée
+    commands.spawn(Camera2d::default());
+    
+    // === CRÉATION DES ÉLÉMENTS VISUELS ===
+    // Ordre logique : du fond vers l'avant (mais le Z détermine l'ordre réel)
+    
+    create_main_circle(&mut commands, &mut meshes, &mut materials);
+    create_exterior_triangles(&mut commands, &mut meshes, &mut materials);
+    create_interior_triangles(&mut commands, &mut meshes, &mut materials);
+    create_r_logo(&mut commands, &mut meshes, &mut materials);
+    
+    // === RÉSUMÉ CONSOLE ===
+    print_creation_summary();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//                  FONCTIONS DE CRÉATION DES ÉLÉMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Crée le cercle principal (anneau épais)
+/// 
+/// Le cercle principal est l'élément de fond du logo.
+/// Il est créé comme un anneau (donut) avec un trou au centre.
+/// 
+/// # Paramètres utilisés
+/// - CIRCLE_RADIUS : rayon extérieur
+/// - CIRCLE_THICKNESS : épaisseur de l'anneau
+/// - CIRCLE_SEGMENTS : qualité du rendu
+/// 
+/// # Position
+/// - X, Y : (0, 0) - centre de l'écran
+/// - Z : 0.0 - complètement en arrière-plan
+fn create_main_circle(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    // === CALCUL DES DIMENSIONS ===
+    let outer_radius = config::CIRCLE_RADIUS;
+    let inner_radius = config::CIRCLE_RADIUS - config::CIRCLE_THICKNESS;
+    
+    // === CRÉATION DU MESH ===
+    let circle_mesh = geometry::create_circle_mesh(
+        outer_radius,
+        inner_radius,
+        config::CIRCLE_SEGMENTS
+    );
+    
+    // === AJOUT AUX ASSETS ===
+    // add() retourne un Handle<Mesh> qui référence le mesh
+    let circle_handle = meshes.add(circle_mesh);
+    
+    // === MATÉRIAU (COULEUR) ===
+    let circle_material = materials.add(materials::get_main_circle_color());
+    
+    // === CRÉATION DE L'ENTITÉ ===
+    // Une entité est créée avec 3 composants :
+    // - Mesh2d : quel mesh afficher
+    // - MeshMaterial2d : quelle apparence appliquer
+    // - Transform : position, rotation, échelle
+    commands.spawn((
+        Mesh2d(circle_handle),
+        MeshMaterial2d(circle_material),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
+}
+
+/// Crée les triangles extérieurs en arc-en-ciel
+/// 
+/// Génère 36 petits triangles disposés en cercle autour du cercle principal.
+/// Chaque triangle a une couleur différente créant un gradient arc-en-ciel.
+/// 
+/// # Caractéristiques
+/// - Nombre : EXTERIOR_TRIANGLES_COUNT (36)
+/// - Espacement : 10° entre chaque (360° / 36)
+/// - Couleur : progression HSL de 0° à 360°
+/// - Position : base du triangle sur le cercle
+/// - Z : 0.1 (devant le cercle principal)
+/// 
+/// # Algorithme
+/// Pour chaque position angulaire :
+/// 1. Calculer l'angle (i × 10°)
+/// 2. Calculer les 3 points du triangle
+/// 3. Créer le mesh triangulaire
+/// 4. Attribuer la couleur arc-en-ciel
+/// 5. Spawner l'entité
+fn create_exterior_triangles(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    // === BOUCLE SUR TOUS LES TRIANGLES ===
+    for i in 0..config::EXTERIOR_TRIANGLES_COUNT {
+        // === CALCUL DE L'ANGLE ===
+        // Espacement régulier : 360° / nombre de triangles
+        let angle_degrees = (i as f32) * 10.0;
+        let base_angle = geometry::degrees_to_radians(angle_degrees);
+        
+        // === CALCUL DES POINTS ===
+        let (p1, p2, p3) = geometry::calculate_exterior_triangle_points(
+            base_angle,
+            config::CIRCLE_RADIUS,
+            config::SMALL_TRIANGLE_SIDE
+        );
+        
+        // === CRÉATION DU MESH ===
+        let triangle_mesh = geometry::create_triangle_from_points(p1, p2, p3);
+        let triangle_handle = meshes.add(triangle_mesh);
+        
+        // === COULEUR ARC-EN-CIEL ===
+        // Chaque triangle a une teinte différente
+        let color = materials::get_rainbow_color(i);
+        let triangle_material = materials.add(color);
+        
+        // === SPAWN ===
+        commands.spawn((
+            Mesh2d(triangle_handle),
+            MeshMaterial2d(triangle_material),
+            Transform::from_xyz(0.0, 0.0, 0.1),
+        ));
+    }
+}
+
+/// Crée les triangles intérieurs avec petits cercles
+/// 
+/// Génère 5 grands triangles formant un pentagone régulier à l'intérieur
+/// du cercle. Chaque triangle a un petit cercle blanc semi-transparent
+/// positionné à son centre (centroïde).
+/// 
+/// # Caractéristiques
+/// - Nombre : INTERIOR_TRIANGLES_COUNT (5)
+/// - Disposition : pentagone régulier (72° entre triangles)
+/// - Orientation : un triangle pointe vers le haut (+90° offset)
+/// - Couleurs : palette de 5 couleurs distinctes
+/// - Cercles centraux : blancs semi-transparents (alpha 0.7)
+/// 
+/// # Ordre de création par triangle
+/// 1. Calculer l'angle de position
+/// 2. Calculer les 3 sommets du triangle
+/// 3. Créer et spawner le triangle (Z=0.2)
+/// 4. Calculer le centroïde
+/// 5. Créer et spawner le petit cercle (Z=0.3)
+fn create_interior_triangles(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    // === BOUCLE SUR LES 5 TRIANGLES ===
+    for i in 0..config::INTERIOR_TRIANGLES_COUNT {
+        // === ANGLE DE POSITION ===
+        // 72° d'espacement (360° / 5) + 90° pour orientation vers le haut
+        let angle_degrees = (i as f32) * 72.0 + 90.0;
+        let base_angle = geometry::degrees_to_radians(angle_degrees);
+        
+        // === RAYON INTÉRIEUR DISPONIBLE ===
+        let inner_radius = config::CIRCLE_RADIUS - config::CIRCLE_THICKNESS;
+        
+        // === CALCUL DES POINTS DU TRIANGLE ===
+        let (p1, p2, p3) = geometry::calculate_interior_triangle_points(
+            base_angle,
+            inner_radius,
+            config::LARGE_TRIANGLE_SIDE
+        );
+        
+        // === CALCUL DU CENTROÏDE ===
+        // Le centroïde servira de position pour le petit cercle
+        let triangle_center = geometry::calculate_triangle_centroid(p1, p2, p3);
+        
+        // === CRÉATION DU TRIANGLE ===
+        let triangle_mesh = geometry::create_triangle_from_points(p1, p2, p3);
+        let triangle_handle = meshes.add(triangle_mesh);
+        
+        // Couleur spécifique à ce triangle
+        let triangle_color = materials::get_interior_triangle_color(i);
+        let triangle_material = materials.add(triangle_color);
+        
+        // Spawn du triangle à Z=0.2
+        commands.spawn((
+            Mesh2d(triangle_handle),
+            MeshMaterial2d(triangle_material),
+            Transform::from_xyz(0.0, 0.0, 0.2),
+        ));
+        
+        // === CRÉATION DU PETIT CERCLE CENTRAL ===
+        let small_circle_mesh = geometry::create_filled_circle_mesh(
+            config::SMALL_CIRCLE_RADIUS,
+            config::SMALL_CIRCLE_SEGMENTS
+        );
+        let small_circle_handle = meshes.add(small_circle_mesh);
+        
+        // Matériau blanc semi-transparent
+        let small_circle_material = materials.add(materials::get_small_circle_color());
+        
+        // Spawn du cercle au centroïde à Z=0.3
+        commands.spawn((
+            Mesh2d(small_circle_handle),
+            MeshMaterial2d(small_circle_material),
+            Transform::from_xyz(triangle_center.x, triangle_center.y, 0.3),
+        ));
+    }
+}
+
+/// Crée le logo "R" complet
+/// 
+/// Cette fonction génère toutes les parties du logo "R" de manière unifiée.
+/// Le logo est composé de 8 polygones distincts qui forment ensemble
+/// la lettre "R" stylisée.
+/// 
+/// # Avantages de cette approche
+/// - Code unifié : une seule boucle pour toutes les parties
+/// - Maintenance facile : ajout/suppression de parties simple
+/// - Cohérence : même couleur et même logique pour toutes les parties
+/// - Debug efficace : messages descriptifs pour chaque partie
+/// 
+/// # Configuration
+/// - Couleur : orange vif (modifiable en une ligne)
+/// - Z-order : 0.40 à 0.47 (défini dans chaque RPartDefinition)
+/// - Géométrie : définie dans geometry::get_all_r_parts()
+/// 
+/// # Process par partie
+/// 1. Validation (minimum 3 points)
+/// 2. Création du mesh polygonal
+/// 3. Application du matériau coloré
+/// 4. Spawn à la position centrale avec Z-order approprié
+/// 5. Log de confirmation
+fn create_r_logo(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    // === COULEUR UNIQUE POUR TOUT LE LOGO ===
+    // Modifier cette ligne pour changer la couleur de tout le "R"
+    // Exemples :
+    // - Rouge : Color::srgba(1.0, 0.0, 0.0, 0.8)
+    // - Bleu : Color::srgba(0.2, 0.6, 1.0, 0.8)
+    // - Vert : Color::srgba(0.2, 0.8, 0.3, 0.8)
+    let r_color = Color::srgba(1.0, 0.5, 0.0, 0.8); // Orange
+    
+    // === PARCOURS DE TOUTES LES PARTIES ===
+    for part in geometry::get_all_r_parts() {
+        // === VALIDATION ===
+        // Un polygone nécessite au moins 3 points
+        if part.points.len() < 3 {
+            println!("⚠️ '{}' ignoré : moins de 3 points", part.name);
+            continue;
+        }
+        
+        // === CRÉATION DU MESH POLYGONAL ===
+        let mesh = geometry::create_polygon_from_points(&part.points);
+        let mesh_handle = meshes.add(mesh);
+        
+        // === MATÉRIAU ===
+        let material = materials.add(ColorMaterial::from(r_color));
+        
+        // === SPAWN DE LA PARTIE ===
+        // Position : centre (0, 0)
+        // Z : défini dans part.z_order pour chaque partie
+        commands.spawn((
+            Mesh2d(mesh_handle),
+            MeshMaterial2d(material),
+            Transform::from_xyz(0.0, 0.0, part.z_order),
+        ));
+        
+        // === LOG DE CONFIRMATION ===
+        println!("   ✨ '{}' créé avec {} points (Z={})", 
+                 part.name, part.points.len(), part.z_order);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//                        FONCTION DE RÉSUMÉ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Affiche un résumé détaillé de la création
+/// 
+/// Cette fonction est appelée à la fin du setup pour confirmer
+/// que tous les éléments ont été créés correctement.
+/// Elle affiche dans la console :
+/// - Le nombre d'éléments de chaque type
+/// - Les paramètres de configuration utilisés
+/// - L'organisation des couches Z
+/// 
+/// Utile pour :
+/// - Vérifier que l'initialisation s'est bien passée
+/// - Débugger en cas de problème visuel
+/// - Documenter la structure du rendu
+fn print_creation_summary() {
+    // Comptage dynamique des parties du logo R
+    let r_parts_count = geometry::get_all_r_parts().len();
+    
+    println!("\n╔══════════════════════════════════════════════════════════╗");
+    println!("║           CRÉATION TERMINÉE - RÉSUMÉ                     ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+    
+    println!("\n📊 ÉLÉMENTS CRÉÉS :");
+    println!("   ✓ 1 cercle principal (anneau épais)");
+    println!("   ✓ {} triangles extérieurs arc-en-ciel", config::EXTERIOR_TRIANGLES_COUNT);
+    println!("   ✓ {} triangles intérieurs colorés", config::INTERIOR_TRIANGLES_COUNT);
+    println!("   ✓ {} petits cercles centraux", config::INTERIOR_TRIANGLES_COUNT);
+    println!("   ✓ {} parties du logo 'R'", r_parts_count);
+    
+    println!("\n🔧 PARAMÈTRES DE CONFIGURATION :");
+    println!("   • Rayon principal : {} px", config::CIRCLE_RADIUS);
+    println!("   • Épaisseur anneau : {} px", config::CIRCLE_THICKNESS);
+    println!("   • Rayon intérieur : {} px", config::CIRCLE_RADIUS - config::CIRCLE_THICKNESS);
+    println!("   • Qualité cercles : {} segments", config::CIRCLE_SEGMENTS);
+    println!("   • Taille triangles extérieurs : {} px", config::SMALL_TRIANGLE_SIDE);
+    println!("   • Taille triangles intérieurs : {} px", config::LARGE_TRIANGLE_SIDE);
+    
+    println!("\n🎬 ORGANISATION DES COUCHES (Z) :");
+    println!("   • Z = 0.0  : Cercle principal (arrière-plan)");
+    println!("   • Z = 0.1  : Triangles extérieurs arc-en-ciel");
+    println!("   • Z = 0.2  : Triangles intérieurs colorés");
+    println!("   • Z = 0.3  : Petits cercles blancs");
+    println!("   • Z = 0.4+ : Logo 'R' ({} parties)", r_parts_count);
+    
+    println!("\n╔══════════════════════════════════════════════════════════╗");
+    println!("║  🚀 Application Bevy prête - Fenêtre ouverte             ║");
+    println!("╚══════════════════════════════════════════════════════════╝\n");
+}
